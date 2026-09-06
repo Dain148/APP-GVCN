@@ -4,7 +4,7 @@
  *
  * Purpose:
  * - Provide an independent Student Dashboard module.
- * - Reuse the existing global `state.students` data source.
+ * - Reuse the existing global state.students data source.
  * - Avoid coupling student UI to the GVCN dashboard rendering logic.
  * - Expose a small public API for the host application.
  *
@@ -133,6 +133,7 @@
         const points = getPoints(student);
         const progress = getProgress(student);
         const avatar = student.avatarUrl || student.avatar || '';
+        const className = student.className || window.state?.admin?.className || '—';
         const avatarHtml = avatar
             ? `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(name)}" class="h-full w-full object-cover">`
             : `<span class="text-xl font-bold text-indigo-700">${escapeHtml(getInitials(name))}</span>`;
@@ -210,7 +211,7 @@
                                 <p class="text-sm font-semibold text-slate-700">Dữ liệu cá nhân</p>
                                 <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
                                     <div><span class="text-slate-400">Mã HS</span><p class="font-semibold text-slate-700">${escapeHtml(student.code || '—')}</p></div>
-                                    <div><span class="text-slate-400">Lớp</span><p class="font-semibold text-slate-700">${escapeHtml(student.className || state?.admin?.className || '—')}</p></div>
+                                    <div><span class="text-slate-400">Lớp</span><p class="font-semibold text-slate-700">${escapeHtml(className)}</p></div>
                                 </div>
                             </div>
                         </section>
