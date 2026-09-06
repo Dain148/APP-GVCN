@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GVCN Dashboard — MATH-AI</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#f8fafc}.card{background:#fff;border:1px solid #e2e8f0;border-radius:20px;box-shadow:0 4px 18px rgba(15,23,42,.05)}.bar{height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden}.bar>i{display:block;height:100%;border-radius:999px;background:#4f46e5}.clickable{cursor:pointer}.clickable:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(15,23,42,.08)}</style>
+</head>
+<body>
+<div id="app" class="max-w-7xl mx-auto p-5 md:p-8"></div>
+<script>
+const seedStudents=[
+ {id:1,name:'Nguyễn Văn A',group:'Tổ 1',points:85,scores:{Toán:8.5,Văn:7.5,Anh:8.0}},
+ {id:2,name:'Trần Thị B',group:'Tổ 2',points:60,scores:{Toán:7.5,Văn:8.5,Anh:8.0}},
+ {id:3,name:'Lê Hoàng C',group:'Tổ 3',points:45,scores:{Toán:6.5,Văn:7.0,Anh:7.5}}
+];
+let students=[];let query='';let sortKey='name';let selected=null;
+function load(){try{const raw=localStorage.getItem('gvcn_students');students=raw?JSON.parse(raw):seedStudents}catch(e){students=seedStudents}render()}
+function avg(s){const a=Object.values(s.scores||{}).map(Number).filter(Number.isFinite);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null}
+function classAvg(){const a=students.map(avg).filter(x=>x!==null);return a.length?a.reduce((x,y)=>x+y,0)/a.length:0}
+function subjects(){const m={};students.forEach(s=>Object.entries(s.scores||{}).forEach(([k,v])=>{if(!m[k])m[k]=[];if(Number.isFinite(Number(v)))m[k].push(Number(v))}));return Object.entries(m).map(([name,a])=>({name,avg:a.reduce((x,y)=>x+y,0)/a.length,count:a.length})).sort((a,b)=>b.avg-a.avg)}
+function visible(){return [...students].filter(s=>s.name.toLowerCase().includes(query.toLowerCase())||String(s.group||'').toLowerCase().includes(query.toLowerCase())).sort((a,b)=>sortKey==='avg'?(avg(b)||0)-(avg(a)||0):sortKey==='points'?(b.points||0)-(a.points||0):a.name.localeCompare(b.name,'vi'))}
+function esc(x){return String(x??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\':'&#92;','"':'&quot;'}[c]))}
+function render(){const subs=subjects(),rows=visible();document.getElementById('app').innerHTML=`
+<header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-7"><div><p class="text-xs font-bold uppercase tracking-[.2em] text-indigo-500">MATH-AI · APP-GVCN</p><h1 class="text-3xl md:text-4xl font-black text-slate-900 mt-1">Tổng quan lớp</h1><p class="text-slate-500 mt-1">Toàn cảnh sĩ số, kết quả học tập và học sinh cần quan tâm.</p></div><div class="text-sm font-bold text-slate-500 bg-white border border-slate-200 rounded-xl px-4 py-2">${new Date().toLocaleDateString('vi-VN')}</div></header>
+<section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+${stat('ph-users','Tổng số học sinh',students.length,'blue')}${stat('ph-chart-line','Điểm TB',classAvg().toFixed(2),'indigo')}${stat('ph-star','Điểm thi đua TB',(students.reduce((a,s)=>a+(Number(s.points)||0),0)/(students.length||1)).toFixed(1),'amber')}${stat('ph-warning-circle','Cần chú ý',students.filter(s=>(avg(s)||10)<6.5).length,'red')}
+</section>
+<section class="grid lg:grid-cols-5 gap-6 mb-6">
+<div class="card lg:col-span-3 p-6"><div class="flex items-center justify-between mb-5"><div><h2 class="font-black text-lg text-slate-900">Thống kê theo môn</h2><p class="text-sm text-slate-500">Điểm trung bình từ dữ liệu điểm của học sinh.</p></div><i class="ph-fill ph-chart-bar text-2xl text-indigo-500"></i></div>${subs.length?subs.map(s=>`<div class="mb-5"><div class="flex justify-between text-sm font-bold mb-2"><span>${esc(s.name)}</span><span>${s.avg.toFixed(2)}</span></div><div class="bar"><i style="width:${Math.min(100,s.avg*10)}%"></i></div></div>`).join(''):'<p class="text-slate-400 py-10 text-center">Chưa có dữ liệu điểm theo môn.</p>'}</div>
+<div class="card lg:col-span-2 p-6"><h2 class="font-black text-lg text-slate-900">Học sinh nổi bật</h2><p class="text-sm text-slate-500 mb-4">Theo điểm trung bình hiện có.</p>${[...students].sort((a,b)=>(avg(b)||0)-(avg(a)||0)).slice(0,5).map((s,i)=>`<button onclick="selectStudent(${s.id})" class="clickable w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition text-left"><span class="w-7 h-7 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-black text-xs">${i+1}</span><span class="flex-1 font-bold text-sm truncate">${esc(s.name)}</span><span class="font-black text-indigo-600">${avg(s)!==null?avg(s).toFixed(2):'—'}</span></button>`).join('')}</div>
+</section>
+<section class="card p-5 md:p-6"><div class="flex flex-col lg:flex-row gap-3 lg:items-center justify-between mb-5"><div><h2 class="font-black text-lg text-slate-900">Danh sách học sinh</h2><p class="text-sm text-slate-500">Tìm kiếm, sắp xếp và mở hồ sơ nhanh.</p></div><div class="flex flex-col sm:flex-row gap-2"><input value="${esc(query)}" oninput="query=this.value;render()" placeholder="Tìm học sinh / tổ..." class="px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-100 min-w-64"><select onchange="sortKey=this.value;render()" class="px-4 py-2.5 rounded-xl border border-slate-200 font-bold"><option value="name" ${sortKey==='name'?'selected':''}>Tên A–Z</option><option value="avg" ${sortKey==='avg'?'selected':''}>Điểm TB ↓</option><option value="points" ${sortKey==='points'?'selected':''}>Thi đua ↓</option></select></div></div>
+<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="text-left text-xs uppercase tracking-wider text-slate-400 border-b"><th class="pb-3">Học sinh</th><th class="pb-3">Tổ</th><th class="pb-3">Điểm TB</th><th class="pb-3">Thi đua</th><th class="pb-3 text-right">Trạng thái</th></tr></thead><tbody>${rows.map(s=>`<tr onclick="selectStudent(${s.id})" class="clickable border-b last:border-0"><td class="py-4 font-bold text-slate-800">${esc(s.name)}</td><td class="py-4 text-slate-500">${esc(s.group||'—')}</td><td class="py-4 font-black">${avg(s)!==null?avg(s).toFixed(2):'—'}</td><td class="py-4 font-bold">${Number(s.points)||0}</td><td class="py-4 text-right">${avg(s)!==null&&avg(s)<6.5?'<span class="px-3 py-1 rounded-full bg-red-50 text-red-600 font-bold text-xs">Cần chú ý</span>':'<span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 font-bold text-xs">Ổn định</span>'}</td></tr>`).join('')||'<tr><td colspan="5" class="py-10 text-center text-slate-400">Không tìm thấy học sinh.</td></tr>'}</tbody></table></div></section>
+${selected?modal(selected):''}`}
+function stat(icon,label,value,color){return `<div class="card p-5"><div class="w-11 h-11 rounded-xl bg-${color}-50 text-${color}-600 flex items-center justify-center mb-4"><i class="ph-fill ${icon} text-2xl"></i></div><div class="text-3xl font-black text-slate-900">${value}</div><div class="text-xs font-bold uppercase tracking-wider text-slate-400 mt-1">${label}</div></div>`}
+function modal(s){return `<div class="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4" onclick="selected=null;render()"><div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl" onclick="event.stopPropagation()"><div class="flex justify-between items-start"><div><p class="text-xs uppercase tracking-widest font-bold text-indigo-500">Hồ sơ học sinh</p><h2 class="text-2xl font-black mt-1">${esc(s.name)}</h2><p class="text-slate-500">${esc(s.group||'Chưa nhóm')}</p></div><button onclick="selected=null;render()" class="p-2 rounded-xl hover:bg-slate-100"><i class="ph-bold ph-x text-xl"></i></button></div><div class="grid grid-cols-2 gap-3 mt-6">${Object.entries(s.scores||{}).map(([k,v])=>`<div class="bg-slate-50 rounded-xl p-4"><div class="text-xs text-slate-400 font-bold">${esc(k)}</div><div class="text-2xl font-black mt-1">${Number(v).toFixed(1)}</div></div>`).join('')||'<div class="col-span-2 text-slate-400">Chưa có điểm môn.</div>'}</div><div class="mt-4 p-4 rounded-xl bg-indigo-50 text-indigo-800 font-bold">Điểm trung bình: ${avg(s)!==null?avg(s).toFixed(2):'Chưa có dữ liệu'}</div></div></div>`}
+function selectStudent(id){selected=students.find(s=>s.id===id)||null;render()}
+load();
+</script>
+</body></html>
