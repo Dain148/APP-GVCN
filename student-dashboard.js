@@ -124,6 +124,82 @@
             </section>`;
     }
 
+    function renderAIRecommendation(student) {
+        if (!student || !window.StudentAIRecommendation?.recommend) {
+            return `
+                <section class="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm">
+                            <i class="ph-sparkle text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800">AI Recommendation</h2>
+                            <p class="mt-1 text-sm text-slate-500">Khu vực dành cho hệ thống khuyến nghị học tập thông minh.</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 rounded-2xl border border-dashed border-indigo-200 bg-white/80 p-5">
+                        <p class="text-sm font-semibold text-indigo-800">Đang chờ AI Recommendation</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">
+                            Hệ thống sẽ hiển thị khuyến nghị khi module AI Recommendation được tải đầy đủ.
+                        </p>
+                    </div>
+                </section>`;
+        }
+
+        const aiResult = window.StudentAIRecommendation.recommend(student.id);
+        const recommendations = Array.isArray(aiResult?.recommendations)
+            ? aiResult.recommendations
+            : [];
+        const priorityLabel = {
+            high: 'Ưu tiên cao',
+            medium: 'Nên thực hiện',
+            low: 'Khuyến nghị'
+        };
+
+        if (!recommendations.length) {
+            return `
+                <section class="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm">
+                            <i class="ph-sparkle text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800">AI Recommendation</h2>
+                            <p class="mt-1 text-sm text-slate-500">Khuyến nghị tự động cho ${escapeHtml(aiResult?.studentName || getDisplayName(student))}</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 rounded-2xl border border-dashed border-indigo-200 bg-white/80 p-5">
+                        <p class="text-sm leading-6 text-slate-600">${escapeHtml(aiResult?.summary || 'Chưa có khuyến nghị.')}</p>
+                    </div>
+                </section>`;
+        }
+
+        return `
+            <section class="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm">
+                        <i class="ph-sparkle text-2xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">AI Recommendation</h2>
+                        <p class="mt-1 text-sm text-slate-500">Khuyến nghị tự động cho ${escapeHtml(aiResult?.studentName || getDisplayName(student))}</p>
+                    </div>
+                </div>
+                <div class="mt-6 space-y-3">
+                    ${recommendations.map(item => `
+                        <article class="rounded-2xl border border-indigo-100 bg-white/90 p-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <h3 class="font-bold text-slate-800">${escapeHtml(item.title)}</h3>
+                                <span class="shrink-0 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">${escapeHtml(priorityLabel[item.priority] || 'Khuyến nghị')}</span>
+                            </div>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">${escapeHtml(item.message)}</p>
+                            <p class="mt-2 text-xs text-slate-400">Lý do: ${escapeHtml(item.reason)}</p>
+                        </article>
+                    `).join('')}
+                </div>
+            </section>`;
+    }
+
     function render(studentId) {
         const student = getCurrentStudent(studentId);
         if (!student) return renderEmptyState();
@@ -216,23 +292,7 @@
                             </div>
                         </section>
 
-                        <section class="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-6 shadow-sm">
-                            <div class="flex items-start gap-4">
-                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-sm">
-                                    <i class="ph-sparkle text-2xl"></i>
-                                </div>
-                                <div>
-                                    <h2 class="text-lg font-bold text-slate-800">AI Recommendation</h2>
-                                    <p class="mt-1 text-sm text-slate-500">Khu vực dành cho hệ thống khuyến nghị học tập thông minh.</p>
-                                </div>
-                            </div>
-                            <div class="mt-6 rounded-2xl border border-dashed border-indigo-200 bg-white/80 p-5">
-                                <p class="text-sm font-semibold text-indigo-800">Sắp ra mắt</p>
-                                <p class="mt-2 text-sm leading-6 text-slate-600">
-                                    AI sẽ phân tích dữ liệu học tập để xác định nội dung ưu tiên, gợi ý ôn tập và giải thích lý do của từng khuyến nghị.
-                                </p>
-                            </div>
-                        </section>
+                        ${renderAIRecommendation(student)}
                     </div>
                 </div>
             </section>`;
