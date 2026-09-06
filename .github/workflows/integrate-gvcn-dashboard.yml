@@ -24,6 +24,7 @@ jobs:
               '<script src="./dashboard-gvcn.js"></script>',
               '<script src="./dashboard-gvcn-attendance.js"></script>',
               '<script src="./dashboard-gvcn-attention.js"></script>',
+              '<script src="./dashboard-gvcn-student-detail.js"></script>',
           ]
           marker = '</body>'
           if marker not in text:
@@ -45,5 +46,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'Integrate GVCN dashboard attention module'
+          git commit -m 'Integrate GVCN student detail module'
           git push
