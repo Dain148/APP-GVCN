@@ -27,6 +27,7 @@ jobs:
               '<script src="./dashboard-gvcn-student-detail.js"></script>',
               '<script src="./dashboard-gvcn-analysis-alert.js"></script>',
               '<script src="./student-dashboard.js"></script>',
+              '<script src="./student-ai-recommendation.js"></script>',
           ]
           marker = '</body>'
           if marker not in text:
@@ -48,5 +49,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git commit -m 'Integrate student dashboard module'
+          git commit -m 'Integrate student AI recommendation module'
           git push
