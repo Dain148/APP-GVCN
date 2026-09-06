@@ -247,7 +247,6 @@
       const html = original.apply(this, arguments);
       if (html.includes('id="gvcn-dashboard-live"')) return html;
 
-      // Stable marker from the original Tong quan view: dashboard sits between stats and quick actions.
       const marker = '                    <!-- Hành động nhanh -->';
       const index = html.indexOf(marker);
       if (index === -1) return html;
@@ -258,6 +257,19 @@
     };
 
     window.renderViewTongQuan.__mathaiDashboard = true;
+
+    // Re-render the dashboard only when the host app itself renders the layout.
+    // This avoids a MutationObserver loop caused by renderDashboard() changing root.innerHTML.
+    if (typeof window.renderLayout === 'function' && !window.renderLayout.__mathaiDashboard) {
+      const originalRenderLayout = window.renderLayout;
+      window.renderLayout = function () {
+        const result = originalRenderLayout.apply(this, arguments);
+        setTimeout(renderDashboard, 0);
+        return result;
+      };
+      window.renderLayout.__mathaiDashboard = true;
+    }
+
     return true;
   }
 
@@ -271,9 +283,4 @@
     }
     if (attempts >= 120) clearInterval(installer);
   }, 50);
-
-  const observer = new MutationObserver(() => {
-    if (document.getElementById('gvcn-dashboard-live')) renderDashboard();
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
 })();
