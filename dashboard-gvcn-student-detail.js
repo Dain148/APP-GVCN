@@ -50,6 +50,44 @@
     document.body.style.overflow = '';
   }
 
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-mathai-src="${src}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === 'true') return resolve();
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', reject, { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.dataset.mathaiSrc = src;
+      script.onload = () => { script.dataset.loaded = 'true'; resolve(); };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  async function mountAIRecommendation(studentId) {
+    const slot = document.getElementById('student-ai-recommendation-slot');
+    if (!slot) return;
+    try {
+      await loadScriptOnce('./student-ai-recommendation.js');
+      await loadScriptOnce('./student-dashboard.js');
+      const student = findStudent(studentId);
+      if (!student) return;
+
+      if (window.StudentAIRecommendation?.render) {
+        slot.innerHTML = window.StudentAIRecommendation.render(student.id);
+      } else {
+        slot.innerHTML = '<div class="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-700">Chưa tải được AI Recommendation.</div>';
+      }
+    } catch (error) {
+      console.warn('[StudentDetail] AI Recommendation unavailable.', error);
+      slot.innerHTML = '<div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">AI Recommendation tạm thời chưa sẵn sàng.</div>';
+    }
+  }
+
   function open(id) {
     const student = findStudent(id);
     if (!student) return;
@@ -114,6 +152,10 @@
             </div>
           </div>
 
+          <div id="student-ai-recommendation-slot">
+            <div class="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 text-sm text-indigo-700">Đang chuẩn bị AI Recommendation…</div>
+          </div>
+
           <div class="bg-white rounded-[1.5rem] border border-slate-200 p-5">
             <div class="flex items-center justify-between mb-4"><div><h3 class="font-black text-slate-800">Lịch sử thi đua</h3><p class="text-xs text-slate-400 mt-1">Các lần cộng/trừ điểm đã lưu</p></div><span class="text-xs font-bold text-slate-400">${h.length} bản ghi</span></div>
             ${h.length ? `<div class="space-y-2">${h.slice(0, 12).map(x => `<div class="flex items-center gap-3 rounded-xl border border-slate-100 p-3"><div class="w-9 h-9 rounded-lg ${x.points >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'} flex items-center justify-center font-black">${x.points >= 0 ? '+' : ''}${x.points}</div><div class="flex-1 min-w-0"><div class="text-sm font-bold text-slate-700 truncate">${esc(x.item.reason || x.item.note || x.item.category || 'Cập nhật điểm')}</div><div class="text-[10px] text-slate-400 mt-0.5">${esc(x.item.date || '')}</div></div></div>`).join('')}</div>` : `<div class="py-8 text-center text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">Chưa có lịch sử thi đua.</div>`}
@@ -137,6 +179,7 @@
       }
     });
     document.addEventListener('keydown', onEscape);
+    mountAIRecommendation(student.id);
   }
 
   function onEscape(event) {
