@@ -1,140 +1,188 @@
-/*
- * MATH-AI / APP-GVCN
- * Student AI Recommendation — Sprint 07
- * Data-driven, explainable recommendations using window.state.students.
+/* MATH-AI — Student AI Recommendation
+ * Safe, explainable recommendations from the current student state.
  */
-(function () {
-    'use strict';
+(function (window) {
+  'use strict';
 
-    const MODULE_ID = 'student-ai-recommendation';
+  function getStudents() {
+    return Array.isArray(window.state && window.state.students)
+      ? window.state.students
+      : [];
+  }
 
-    function students() {
-        return Array.isArray(window.state?.students) ? window.state.students : [];
+  function getStudent(studentId) {
+    if (studentId === undefined || studentId === null || studentId === '') return null;
+    var wanted = String(studentId);
+    return getStudents().find(function (student) {
+      return [student && student.id, student && student.code, student && student.studentId]
+        .some(function (value) {
+          return value !== undefined && value !== null && String(value) === wanted;
+        });
+    }) || null;
+  }
+
+  function numeric(value) {
+    var number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function averageOf(student) {
+    if (!student) return null;
+    var direct = numeric(student.average ?? student.avg ?? student.gpa);
+    if (direct !== null) return direct;
+
+    var grades = Array.isArray(student.grades)
+      ? student.grades
+      : Array.isArray(student.subjects)
+        ? student.subjects
+        : [];
+    var values = grades.map(function (item) {
+      return numeric(item && (item.score ?? item.grade ?? item.average));
+    }).filter(function (value) { return value !== null; });
+
+    return values.length
+      ? values.reduce(function (sum, value) { return sum + value; }, 0) / values.length
+      : null;
+  }
+
+  function progressOf(student) {
+    if (!student) return null;
+    var direct = numeric(student.progress ?? student.progressRate ?? student.improvement);
+    if (direct !== null) return direct;
+
+    var history = Array.isArray(student.gradeHistory)
+      ? student.gradeHistory
+      : Array.isArray(student.history)
+        ? student.history
+        : [];
+    var values = history.map(function (item) {
+      return numeric(item && (item.average ?? item.avg ?? item.score));
+    }).filter(function (value) { return value !== null; });
+
+    if (values.length < 2) return null;
+    return values[values.length - 1] - values[0];
+  }
+
+  function attendanceOf(student) {
+    if (!student) return null;
+    return numeric(student.attendanceRate ?? student.attendance ?? student.attendancePercent);
+  }
+
+  function nameOf(student) {
+    if (!student) return 'học sinh';
+    return student.name || student.fullName || student.displayName || 'học sinh';
+  }
+
+  function analyse(student) {
+    var average = averageOf(student);
+    var progress = progressOf(student);
+    var attendance = attendanceOf(student);
+    var recommendations = [];
+
+    if (average !== null && average < 5) {
+      recommendations.push({
+        type: 'priority',
+        title: 'Củng cố kiến thức nền',
+        text: 'Nên ôn lại các kiến thức cơ bản và làm bài theo từng dạng trước khi tăng độ khó.',
+        reason: 'Điểm trung bình hiện ở mức cần được hỗ trợ thêm.'
+      });
+    } else if (average !== null && average < 7) {
+      recommendations.push({
+        type: 'practice',
+        title: 'Luyện tập theo chuyên đề',
+        text: 'Nên chia nhỏ nội dung còn yếu, luyện bài tương tự và kiểm tra lại lỗi sau mỗi lần làm.',
+        reason: 'Điểm trung bình cho thấy vẫn còn dư địa cải thiện rõ rệt.'
+      });
+    } else if (average !== null) {
+      recommendations.push({
+        type: 'growth',
+        title: 'Duy trì và nâng cao',
+        text: 'Có thể thử các bài vận dụng, bài tổng hợp hoặc mục tiêu cao hơn để phát triển năng lực.',
+        reason: 'Kết quả hiện tại là nền tảng tốt để nâng mức độ thử thách.'
+      });
     }
 
-    function getStudent(studentId) {
-        if (!studentId) return null;
-        return students().find(s => String(s.id ?? s.code ?? s.studentId) === String(studentId)) || null;
+    if (progress !== null && progress < 0) {
+      recommendations.push({
+        type: 'alert',
+        title: 'Theo dõi xu hướng giảm',
+        text: 'Nên rà soát các bài kiểm tra gần đây và xác định thời điểm bắt đầu xuất hiện khó khăn.',
+        reason: 'Kết quả gần đây thấp hơn giai đoạn trước.'
+      });
+    } else if (progress !== null && progress > 0) {
+      recommendations.push({
+        type: 'positive',
+        title: 'Tiếp tục phát huy',
+        text: 'Giữ nhịp học hiện tại và ghi lại phương pháp đã giúp kết quả tiến bộ.',
+        reason: 'Kết quả học tập đang có xu hướng cải thiện.'
+      });
     }
 
-    function num(...values) {
-        for (const value of values) {
-            if (value !== undefined && value !== null && value !== '' && Number.isFinite(Number(value))) {
-                return Number(value);
-            }
-        }
-        return 0;
+    if (attendance !== null && attendance < 80) {
+      recommendations.push({
+        type: 'attendance',
+        title: 'Cải thiện chuyên cần',
+        text: 'Cần bảo đảm tham gia đầy đủ và bổ sung nội dung đã bỏ lỡ sau mỗi buổi học.',
+        reason: 'Tỷ lệ chuyên cần đang thấp hơn mức khuyến nghị.'
+      });
     }
 
-    function nameOf(student) {
-        return student?.name || student?.fullName || student?.displayName || 'Học sinh';
+    if (!recommendations.length) {
+      recommendations.push({
+        type: 'general',
+        title: 'Tiếp tục theo dõi',
+        text: 'Cần thêm dữ liệu học tập để đưa ra khuyến nghị cá nhân hóa chính xác hơn.',
+        reason: 'Dữ liệu hiện tại chưa đủ để xác định ưu tiên cụ thể.'
+      });
     }
 
-    function averageOf(student) {
-        const direct = num(student?.average, student?.avg, student?.averageScore, student?.gpa);
-        if (direct) return direct;
-        const scores = student?.scores || student?.grades || student?.subjects;
-        if (Array.isArray(scores) && scores.length) {
-            const values = scores.map(item => num(item?.score, item?.value, item?.average)).filter(Boolean);
-            if (values.length) return values.reduce((a, b) => a + b, 0) / values.length;
-        }
-        return 0;
-    }
-
-    function progressOf(student) {
-        return Math.max(0, Math.min(100, num(student?.progress, student?.learningProgress, student?.completion)));
-    }
-
-    function analyse(student) {
-        if (!student) return null;
-        const average = averageOf(student);
-        const progress = progressOf(student);
-        const attendance = num(student.attendance, student.attendanceRate, student.presenceRate);
-        const recommendations = [];
-
-        if (average > 0 && average < 5) {
-            recommendations.push({
-                priority: 'high',
-                title: 'Củng cố kiến thức nền',
-                message: 'Ôn lại các khái niệm cơ bản và luyện bài tập theo từng dạng trước khi chuyển sang phần nâng cao.',
-                reason: `Điểm trung bình hiện tại khoảng ${average.toFixed(1)}, cần ưu tiên củng cố nền tảng.`
-            });
-        } else if (average > 0 && average < 7) {
-            recommendations.push({
-                priority: 'medium',
-                title: 'Luyện tập theo chuyên đề',
-                message: 'Chọn một chuyên đề còn yếu, làm bài từ cơ bản đến vận dụng và ghi lại lỗi sai sau mỗi lần luyện.',
-                reason: `Điểm trung bình hiện tại khoảng ${average.toFixed(1)}, phù hợp với kế hoạch luyện tập có trọng tâm.`
-            });
-        } else if (average >= 7) {
-            recommendations.push({
-                priority: 'low',
-                title: 'Mở rộng và nâng cao',
-                message: 'Duy trì nền tảng hiện có và thử thêm bài vận dụng, bài tổng hợp để phát triển năng lực giải quyết vấn đề.',
-                reason: `Điểm trung bình hiện tại khoảng ${average.toFixed(1)}, có thể mở rộng mức độ thử thách.`
-            });
-        }
-
-        if (progress > 0 && progress < 60) {
-            recommendations.push({
-                priority: 'medium',
-                title: 'Duy trì lịch học đều đặn',
-                message: 'Chia nhiệm vụ thành các phiên học ngắn, đặt mục tiêu hoàn thành từng phần và theo dõi tiến độ hằng tuần.',
-                reason: `Tiến độ hiện tại là ${progress}%, nên tăng tính đều đặn trong quá trình học.`
-            });
-        }
-
-        if (attendance > 0 && attendance < 80) {
-            recommendations.push({
-                priority: 'high',
-                title: 'Cải thiện chuyên cần',
-                message: 'Ưu tiên tham gia đầy đủ các buổi học và bổ sung nội dung đã bỏ lỡ để tránh tạo khoảng trống kiến thức.',
-                reason: `Tỷ lệ chuyên cần hiện tại khoảng ${attendance}%.`
-            });
-        }
-
-        if (!recommendations.length) {
-            recommendations.push({
-                priority: 'low',
-                title: 'Tiếp tục duy trì',
-                message: 'Tiếp tục học tập ổn định, cập nhật kết quả thường xuyên để hệ thống đưa ra khuyến nghị chính xác hơn.',
-                reason: 'Dữ liệu hiện tại chưa cho thấy vấn đề nổi bật cần ưu tiên.'
-            });
-        }
-
-        return {
-            studentId: student.id ?? student.code ?? student.studentId,
-            studentName: nameOf(student),
-            average,
-            progress,
-            attendance,
-            recommendations,
-            summary: `Đã tạo ${recommendations.length} khuyến nghị dựa trên dữ liệu học tập hiện có.`
-        };
-    }
-
-    function recommend(studentId) {
-        return analyse(getStudent(studentId));
-    }
-
-    function render(studentId) {
-        const result = recommend(studentId);
-        if (!result) return '<div class="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">Chưa có dữ liệu để tạo khuyến nghị.</div>';
-        return result.recommendations.map(item => `<article class="rounded-xl border border-indigo-100 bg-white p-4"><div class="flex items-center justify-between gap-2"><strong class="text-slate-800">${escapeHtml(item.title)}</strong><span class="text-xs font-semibold text-indigo-600">${escapeHtml(item.priority)}</span></div><p class="mt-2 text-sm text-slate-600">${escapeHtml(item.message)}</p><p class="mt-2 text-xs text-slate-400">Lý do: ${escapeHtml(item.reason)}</p></article>`).join('');
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-    }
-
-    window.StudentAIRecommendation = {
-        id: MODULE_ID,
-        analyse,
-        recommend,
-        render,
-        getStudent,
-        getStudents: students
+    return {
+      studentId: student && (student.id ?? student.code ?? student.studentId),
+      studentName: nameOf(student),
+      average: average,
+      progress: progress,
+      attendance: attendance,
+      recommendations: recommendations
     };
+  }
 
-    console.info('[StudentAIRecommendation] Module loaded.');
-})();
+  function recommend(studentId) {
+    return analyse(getStudent(studentId));
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function render(studentId) {
+    var result = recommend(studentId);
+    var cards = result.recommendations.map(function (item) {
+      return '<article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">' +
+        '<div class="mb-1 text-sm font-semibold text-slate-800">' + escapeHtml(item.title) + '</div>' +
+        '<p class="text-sm leading-6 text-slate-600">' + escapeHtml(item.text) + '</p>' +
+        '<p class="mt-2 text-xs text-slate-400">Cơ sở: ' + escapeHtml(item.reason) + '</p>' +
+        '</article>';
+    }).join('');
+
+    return '<section class="space-y-3" data-module="student-ai-recommendation">' +
+      '<div class="flex items-center justify-between gap-3">' +
+        '<div><h3 class="text-base font-bold text-slate-800">Gợi ý học tập từ AI</h3>' +
+        '<p class="text-xs text-slate-500">Phân tích giải thích được dựa trên dữ liệu hiện có của ' + escapeHtml(result.studentName) + '.</p></div>' +
+      '</div>' +
+      '<div class="grid gap-3">' + cards + '</div>' +
+    '</section>';
+  }
+
+  window.StudentAIRecommendation = {
+    analyse: analyse,
+    analyze: analyse,
+    recommend: recommend,
+    render: render,
+    getStudent: getStudent
+  };
+})(window);
