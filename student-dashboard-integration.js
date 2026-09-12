@@ -1,12 +1,46 @@
 (function () {
   'use strict';
 
+  function readStoredState() {
+    try {
+      const raw = localStorage.getItem('chuyen_tau_data');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      console.warn('[StudentDashboardIntegration] Không đọc được dữ liệu LocalStorage:', error);
+      return null;
+    }
+  }
+
   function getStudents() {
-    return Array.isArray(window.state?.students) ? window.state.students : [];
+    // Ưu tiên state công khai nếu ứng dụng đã expose state.
+    if (Array.isArray(window.state?.students) && window.state.students.length) {
+      return window.state.students;
+    }
+
+    // APP GVCN hiện lưu state trong LocalStorage với khóa này.
+    const storedState = readStoredState();
+    if (Array.isArray(storedState?.students)) {
+      return storedState.students;
+    }
+
+    return [];
+  }
+
+  function getStudentKey(student, index) {
+    return student?.id ?? student?.code ?? student?.studentId ?? index;
   }
 
   function studentLabel(student, index) {
     return student.name || student.fullName || student.hoTen || student.code || student.studentId || `Học sinh ${index + 1}`;
+  }
+
+  function renderEmptyState() {
+    const content = document.getElementById('student-dashboard-integration-content');
+    if (content) {
+      content.innerHTML = '<div style="padding:30px;text-align:center;color:#64748b">Chưa có dữ liệu học sinh. Hãy thêm học sinh trong mục Học sinh của APP GVCN trước.</div>';
+    }
   }
 
   function openDashboard() {
@@ -43,22 +77,29 @@
 
     if (!students.length) {
       selector.innerHTML = '<option value="">Chưa có dữ liệu học sinh</option>';
-      document.getElementById('student-dashboard-integration-content').innerHTML = '<div style="padding:30px;text-align:center;color:#64748b">Chưa có dữ liệu học sinh trong state.students.</div>';
+      renderEmptyState();
       return;
     }
 
     students.forEach((student, index) => {
       const option = document.createElement('option');
-      option.value = String(student.id ?? student.code ?? student.studentId ?? index);
+      option.value = String(getStudentKey(student, index));
       option.textContent = studentLabel(student, index);
       selector.appendChild(option);
     });
 
     function renderSelected() {
-      const selected = students.find((student, index) => String(student.id ?? student.code ?? student.studentId ?? index) === selector.value) || students[0];
-      const key = selected.id ?? selected.code ?? selected.studentId;
-      const html = window.StudentDashboard.render(key);
-      document.getElementById('student-dashboard-integration-content').innerHTML = html || '<div>Không có dữ liệu hiển thị.</div>';
+      const selected = students.find((student, index) => String(getStudentKey(student, index)) === selector.value) || students[0];
+      const key = getStudentKey(selected, 0);
+      const content = document.getElementById('student-dashboard-integration-content');
+
+      try {
+        const html = window.StudentDashboard.render(key);
+        content.innerHTML = html || '<div>Không có dữ liệu hiển thị.</div>';
+      } catch (error) {
+        console.error('[StudentDashboardIntegration] Lỗi render hồ sơ:', error);
+        content.innerHTML = '<div style="padding:30px;color:#b91c1c">Không thể hiển thị hồ sơ học sinh. Vui lòng kiểm tra Console để biết chi tiết.</div>';
+      }
     }
 
     selector.onchange = renderSelected;
@@ -83,5 +124,5 @@
   }
 
   init();
-  window.StudentDashboardIntegration = { open: openDashboard, mount: mountButton };
+  window.StudentDashboardIntegration = { open: openDashboard, mount: mountButton, getStudents };
 })();
