@@ -1,46 +1,32 @@
 (function () {
   'use strict';
 
-  function readStoredState() {
-    try {
-      const raw = localStorage.getItem('chuyen_tau_data');
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (error) {
-      console.warn('[StudentDashboardIntegration] Không đọc được dữ liệu LocalStorage:', error);
-      return null;
-    }
-  }
-
   function getStudents() {
-    // Ưu tiên state công khai nếu ứng dụng đã expose state.
     if (Array.isArray(window.state?.students) && window.state.students.length) {
       return window.state.students;
     }
 
-    // APP GVCN hiện lưu state trong LocalStorage với khóa này.
-    const storedState = readStoredState();
-    if (Array.isArray(storedState?.students)) {
-      return storedState.students;
+    try {
+      const saved = localStorage.getItem('chuyen_tau_data');
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (Array.isArray(parsed?.students)) return parsed.students;
+    } catch (error) {
+      console.warn('[StudentDashboardIntegration] Cannot read local data.', error);
     }
 
     return [];
   }
 
-  function getStudentKey(student, index) {
-    return student?.id ?? student?.code ?? student?.studentId ?? index;
+  function hydrateSharedState(students) {
+    if (!Array.isArray(students) || !students.length) return;
+    window.state = window.state || {};
+    if (!Array.isArray(window.state.students) || !window.state.students.length) {
+      window.state.students = students;
+    }
   }
 
   function studentLabel(student, index) {
     return student.name || student.fullName || student.hoTen || student.code || student.studentId || `Học sinh ${index + 1}`;
-  }
-
-  function renderEmptyState() {
-    const content = document.getElementById('student-dashboard-integration-content');
-    if (content) {
-      content.innerHTML = '<div style="padding:30px;text-align:center;color:#64748b">Chưa có dữ liệu học sinh. Hãy thêm học sinh trong mục Học sinh của APP GVCN trước.</div>';
-    }
   }
 
   function openDashboard() {
@@ -72,33 +58,35 @@
     }
 
     const students = getStudents();
+    hydrateSharedState(students);
+
     const selector = document.getElementById('student-dashboard-selector');
+    const content = document.getElementById('student-dashboard-integration-content');
     selector.innerHTML = '';
 
     if (!students.length) {
       selector.innerHTML = '<option value="">Chưa có dữ liệu học sinh</option>';
-      renderEmptyState();
+      content.innerHTML = '<div style="padding:30px;text-align:center;color:#64748b">Chưa có dữ liệu học sinh trong hệ thống.</div>';
       return;
     }
 
     students.forEach((student, index) => {
       const option = document.createElement('option');
-      option.value = String(getStudentKey(student, index));
+      option.value = String(student.id ?? student.code ?? student.studentId ?? index);
       option.textContent = studentLabel(student, index);
       selector.appendChild(option);
     });
 
     function renderSelected() {
-      const selected = students.find((student, index) => String(getStudentKey(student, index)) === selector.value) || students[0];
-      const key = getStudentKey(selected, 0);
-      const content = document.getElementById('student-dashboard-integration-content');
+      const selected = students.find((student, index) => String(student.id ?? student.code ?? student.studentId ?? index) === selector.value) || students[0];
+      const key = selected.id ?? selected.code ?? selected.studentId ?? students.indexOf(selected);
 
       try {
         const html = window.StudentDashboard.render(key);
         content.innerHTML = html || '<div>Không có dữ liệu hiển thị.</div>';
       } catch (error) {
-        console.error('[StudentDashboardIntegration] Lỗi render hồ sơ:', error);
-        content.innerHTML = '<div style="padding:30px;color:#b91c1c">Không thể hiển thị hồ sơ học sinh. Vui lòng kiểm tra Console để biết chi tiết.</div>';
+        console.error('[StudentDashboardIntegration] Render error:', error);
+        content.innerHTML = '<div style="padding:30px;text-align:center;color:#b91c1c">Không thể hiển thị hồ sơ học tập. Vui lòng mở Console để kiểm tra lỗi.</div>';
       }
     }
 
