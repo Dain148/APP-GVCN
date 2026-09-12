@@ -1,5 +1,6 @@
 /* MATH-AI — Student AI Recommendation
  * Safe, explainable recommendations from the current student state.
+ * Uses real student profile data and clearly reports missing academic data.
  */
 (function (window) {
   'use strict';
@@ -28,7 +29,7 @@
 
   function averageOf(student) {
     if (!student) return null;
-    var direct = numeric(student.average ?? student.avg ?? student.gpa);
+    var direct = numeric(student.average ?? student.avg ?? student.averageScore ?? student.gpa);
     if (direct !== null) return direct;
 
     var grades = Array.isArray(student.grades)
@@ -77,6 +78,10 @@
     var average = averageOf(student);
     var progress = progressOf(student);
     var attendance = attendanceOf(student);
+    var goal = student && (student.goal || student.learningGoal);
+    var talent = student && (student.talent || student.strength || student.strengths);
+    var history = student && (student.gradeHistory || student.history);
+    var hasHistory = Array.isArray(history) && history.length > 0;
     var recommendations = [];
 
     if (average !== null && average < 5) {
@@ -127,6 +132,33 @@
       });
     }
 
+    if (average === null && talent) {
+      recommendations.push({
+        type: 'strength',
+        title: 'Phát triển thế mạnh ' + talent,
+        text: 'Tiếp tục học sâu môn ' + talent + ', đồng thời ghi lại kết quả từng bài luyện để hệ thống xác định mức độ tiến bộ.',
+        reason: 'Hồ sơ hiện ghi nhận ' + talent + ' là thế mạnh của học sinh.'
+      });
+    }
+
+    if (average === null && goal) {
+      recommendations.push({
+        type: 'goal',
+        title: 'Xây dựng lộ trình đạt mục tiêu',
+        text: 'Đặt các mục tiêu ngắn hạn theo tuần và bổ sung điểm kiểm tra, bài tập hoặc kết quả môn học để theo dõi mục tiêu “' + goal + '”.',
+        reason: 'Học sinh đã có mục tiêu “' + goal + '”, nhưng chưa có dữ liệu điểm để đo khoảng cách đến mục tiêu.'
+      });
+    }
+
+    if (!hasHistory && average === null) {
+      recommendations.push({
+        type: 'data',
+        title: 'Bổ sung dữ liệu học tập',
+        text: 'Cần thêm điểm theo môn, lịch sử kiểm tra hoặc kết quả bài tập để AI xác định ưu tiên và xu hướng chính xác hơn.',
+        reason: 'Hồ sơ hiện chưa có lịch sử điểm hoặc dữ liệu đánh giá học tập.'
+      });
+    }
+
     if (!recommendations.length) {
       recommendations.push({
         type: 'general',
@@ -142,6 +174,8 @@
       average: average,
       progress: progress,
       attendance: attendance,
+      goal: goal || null,
+      talent: talent || null,
       recommendations: recommendations
     };
   }
@@ -155,7 +189,7 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
+      .replace(/\"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
 
