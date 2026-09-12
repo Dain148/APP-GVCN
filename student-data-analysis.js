@@ -5,9 +5,7 @@
   'use strict';
 
   function students() {
-    return Array.isArray(window.state && window.state.students)
-      ? window.state.students
-      : [];
+    return Array.isArray(window.state && window.state.students) ? window.state.students : [];
   }
 
   function number(value) {
@@ -19,26 +17,22 @@
     if (studentId === undefined || studentId === null || studentId === '') return null;
     var wanted = String(studentId);
     return students().find(function (student) {
-      return [student && student.id, student && student.code, student && student.studentId]
-        .some(function (value) {
-          return value !== undefined && value !== null && String(value) === wanted;
-        });
+      return [student && student.id, student && student.code, student && student.studentId].some(function (value) {
+        return value !== undefined && value !== null && String(value) === wanted;
+      });
     }) || null;
   }
 
   function getHistory(student) {
     if (!student) return [];
-    var history = Array.isArray(student.gradeHistory)
-      ? student.gradeHistory
-      : Array.isArray(student.history) ? student.history : [];
-
+    var history = Array.isArray(student.gradeHistory) ? student.gradeHistory : (Array.isArray(student.history) ? student.history : []);
     return history.map(function (item) {
       if (typeof item === 'number') return { score: item };
       if (!item || typeof item !== 'object') return null;
       var score = number(item.average ?? item.avg ?? item.score ?? item.grade);
       return score === null ? null : {
         score: score,
-        subject: item.subject || item môn || item.name || null,
+        subject: item.subject || item.subjectName || item.name || null,
         date: item.date || item.createdAt || null
       };
     }).filter(Boolean);
@@ -48,7 +42,6 @@
     if (!student) return null;
     var direct = number(student.average ?? student.avg ?? student.averageScore ?? student.gpa);
     if (direct !== null) return direct;
-
     var history = getHistory(student);
     if (!history.length) return null;
     return history.reduce(function (sum, item) { return sum + item.score; }, 0) / history.length;
@@ -57,9 +50,7 @@
   function getTrend(student) {
     var history = getHistory(student);
     if (history.length < 2) return { value: null, label: 'Chưa đủ dữ liệu', reason: 'Cần ít nhất hai mốc đánh giá để xác định xu hướng.' };
-    var first = history[0].score;
-    var last = history[history.length - 1].score;
-    var delta = last - first;
+    var delta = history[history.length - 1].score - history[0].score;
     if (delta > 0) return { value: delta, label: 'Tăng', reason: 'Kết quả gần đây cao hơn mốc đánh giá đầu tiên.' };
     if (delta < 0) return { value: delta, label: 'Giảm', reason: 'Kết quả gần đây thấp hơn mốc đánh giá đầu tiên.' };
     return { value: 0, label: 'Ổn định', reason: 'Kết quả giữa các mốc đánh giá không thay đổi đáng kể.' };
