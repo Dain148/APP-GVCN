@@ -1,6 +1,5 @@
 /* MATH-AI — Student AI Recommendation
- * Safe, explainable recommendations from the current student state.
- * Uses real student profile data and clearly reports missing academic data.
+ * Explainable recommendations from student profile and academic analysis.
  */
 (function (window) {
   'use strict';
@@ -34,9 +33,7 @@
 
     var grades = Array.isArray(student.grades)
       ? student.grades
-      : Array.isArray(student.subjects)
-        ? student.subjects
-        : [];
+      : Array.isArray(student.subjects) ? student.subjects : [];
     var values = grades.map(function (item) {
       return numeric(item && (item.score ?? item.grade ?? item.average));
     }).filter(function (value) { return value !== null; });
@@ -53,25 +50,37 @@
 
     var history = Array.isArray(student.gradeHistory)
       ? student.gradeHistory
-      : Array.isArray(student.history)
-        ? student.history
-        : [];
+      : Array.isArray(student.history) ? student.history : [];
     var values = history.map(function (item) {
       return numeric(item && (item.average ?? item.avg ?? item.score));
     }).filter(function (value) { return value !== null; });
 
-    if (values.length < 2) return null;
-    return values[values.length - 1] - values[0];
+    return values.length >= 2 ? values[values.length - 1] - values[0] : null;
   }
 
   function attendanceOf(student) {
-    if (!student) return null;
-    return numeric(student.attendanceRate ?? student.attendance ?? student.attendancePercent);
+    return student ? numeric(student.attendanceRate ?? student.attendance ?? student.attendancePercent) : null;
   }
 
   function nameOf(student) {
-    if (!student) return 'học sinh';
-    return student.name || student.fullName || student.displayName || 'học sinh';
+    return student ? (student.name || student.fullName || student.displayName || 'học sinh') : 'học sinh';
+  }
+
+  function getAnalysis(student) {
+    if (window.StudentDataAnalysis && typeof window.StudentDataAnalysis.analyse === 'function') {
+      return window.StudentDataAnalysis.analyse(student);
+    }
+    return null;
+  }
+
+  function addRecommendation(list, type, title, text, reason) {
+    list.push({
+      type: type,
+      title: title,
+      text: text,
+      message: text,
+      reason: reason
+    });
   }
 
   function analyse(student) {
@@ -82,90 +91,90 @@
     var talent = student && (student.talent || student.strength || student.strengths);
     var history = student && (student.gradeHistory || student.history);
     var hasHistory = Array.isArray(history) && history.length > 0;
+    var analysis = getAnalysis(student);
     var recommendations = [];
 
+    if (analysis) {
+      if (analysis.average !== null && average === null) average = analysis.average;
+      if (analysis.progress !== null && progress === null) progress = analysis.progress;
+      if (analysis.attendance !== null && attendance === null) attendance = analysis.attendance;
+      if (!goal && analysis.goal) goal = analysis.goal;
+      if (!talent && analysis.talent) talent = analysis.talent;
+    }
+
     if (average !== null && average < 5) {
-      recommendations.push({
-        type: 'priority',
-        title: 'Củng cố kiến thức nền',
-        text: 'Nên ôn lại các kiến thức cơ bản và làm bài theo từng dạng trước khi tăng độ khó.',
-        reason: 'Điểm trung bình hiện ở mức cần được hỗ trợ thêm.'
-      });
+      addRecommendation(recommendations, 'priority', 'Củng cố kiến thức nền',
+        'Nên ôn lại các kiến thức cơ bản và làm bài theo từng dạng trước khi tăng độ khó.',
+        'Điểm trung bình hiện ở mức cần được hỗ trợ thêm.');
     } else if (average !== null && average < 7) {
-      recommendations.push({
-        type: 'practice',
-        title: 'Luyện tập theo chuyên đề',
-        text: 'Nên chia nhỏ nội dung còn yếu, luyện bài tương tự và kiểm tra lại lỗi sau mỗi lần làm.',
-        reason: 'Điểm trung bình cho thấy vẫn còn dư địa cải thiện rõ rệt.'
-      });
+      addRecommendation(recommendations, 'practice', 'Luyện tập theo chuyên đề',
+        'Nên chia nhỏ nội dung còn yếu, luyện bài tương tự và kiểm tra lại lỗi sau mỗi lần làm.',
+        'Điểm trung bình cho thấy vẫn còn dư địa cải thiện rõ rệt.');
     } else if (average !== null) {
-      recommendations.push({
-        type: 'growth',
-        title: 'Duy trì và nâng cao',
-        text: 'Có thể thử các bài vận dụng, bài tổng hợp hoặc mục tiêu cao hơn để phát triển năng lực.',
-        reason: 'Kết quả hiện tại là nền tảng tốt để nâng mức độ thử thách.'
-      });
+      addRecommendation(recommendations, 'growth', 'Duy trì và nâng cao',
+        'Có thể thử các bài vận dụng, bài tổng hợp hoặc mục tiêu cao hơn để phát triển năng lực.',
+        'Kết quả hiện tại là nền tảng tốt để nâng mức độ thử thách.');
     }
 
     if (progress !== null && progress < 0) {
-      recommendations.push({
-        type: 'alert',
-        title: 'Theo dõi xu hướng giảm',
-        text: 'Nên rà soát các bài kiểm tra gần đây và xác định thời điểm bắt đầu xuất hiện khó khăn.',
-        reason: 'Kết quả gần đây thấp hơn giai đoạn trước.'
-      });
+      addRecommendation(recommendations, 'alert', 'Theo dõi xu hướng giảm',
+        'Nên rà soát các bài kiểm tra gần đây và xác định thời điểm bắt đầu xuất hiện khó khăn.',
+        'Kết quả gần đây thấp hơn giai đoạn trước.');
     } else if (progress !== null && progress > 0) {
-      recommendations.push({
-        type: 'positive',
-        title: 'Tiếp tục phát huy',
-        text: 'Giữ nhịp học hiện tại và ghi lại phương pháp đã giúp kết quả tiến bộ.',
-        reason: 'Kết quả học tập đang có xu hướng cải thiện.'
+      addRecommendation(recommendations, 'positive', 'Tiếp tục phát huy',
+        'Giữ nhịp học hiện tại và ghi lại phương pháp đã giúp kết quả tiến bộ.',
+        'Kết quả học tập đang có xu hướng cải thiện.');
+    }
+
+    if (analysis && Array.isArray(analysis.weaknesses)) {
+      analysis.weaknesses.slice(0, 2).forEach(function (subject) {
+        addRecommendation(recommendations, 'weakness', 'Cải thiện môn ' + subject,
+          'Ưu tiên ôn lại kiến thức nền, luyện bài theo chuyên đề và kiểm tra lại lỗi sai ở môn ' + subject + '.',
+          'Phân tích dữ liệu học tập xác định ' + subject + ' là nội dung cần được chú ý.');
       });
+    }
+
+    if (analysis && analysis.trend && analysis.trend.label && analysis.trend.label !== 'Chưa đủ dữ liệu') {
+      var trendLabel = analysis.trend.label;
+      if (trendLabel === 'Tăng') {
+        addRecommendation(recommendations, 'trend', 'Duy trì đà tiến bộ',
+          'Tiếp tục phương pháp học đang hiệu quả và tăng dần độ khó bài tập.',
+          'Xu hướng điểm gần đây đang tăng.');
+      } else if (trendLabel === 'Giảm') {
+        addRecommendation(recommendations, 'trend-alert', 'Rà soát nguyên nhân điểm giảm',
+          'Kiểm tra các chủ đề có điểm thấp trong những lần đánh giá gần nhất và lập kế hoạch bù đắp.',
+          'Xu hướng điểm gần đây đang giảm.');
+      }
     }
 
     if (attendance !== null && attendance < 80) {
-      recommendations.push({
-        type: 'attendance',
-        title: 'Cải thiện chuyên cần',
-        text: 'Cần bảo đảm tham gia đầy đủ và bổ sung nội dung đã bỏ lỡ sau mỗi buổi học.',
-        reason: 'Tỷ lệ chuyên cần đang thấp hơn mức khuyến nghị.'
-      });
+      addRecommendation(recommendations, 'attendance', 'Cải thiện chuyên cần',
+        'Cần bảo đảm tham gia đầy đủ và bổ sung nội dung đã bỏ lỡ sau mỗi buổi học.',
+        'Tỷ lệ chuyên cần đang thấp hơn mức khuyến nghị.');
     }
 
     if (average === null && talent) {
-      recommendations.push({
-        type: 'strength',
-        title: 'Phát triển thế mạnh ' + talent,
-        text: 'Tiếp tục học sâu môn ' + talent + ', đồng thời ghi lại kết quả từng bài luyện để hệ thống xác định mức độ tiến bộ.',
-        reason: 'Hồ sơ hiện ghi nhận ' + talent + ' là thế mạnh của học sinh.'
-      });
+      addRecommendation(recommendations, 'strength', 'Phát triển thế mạnh ' + talent,
+        'Tiếp tục học sâu môn ' + talent + ', đồng thời ghi lại kết quả từng bài luyện để hệ thống xác định mức độ tiến bộ.',
+        'Hồ sơ hiện ghi nhận ' + talent + ' là thế mạnh của học sinh.');
     }
 
     if (average === null && goal) {
-      recommendations.push({
-        type: 'goal',
-        title: 'Xây dựng lộ trình đạt mục tiêu',
-        text: 'Đặt các mục tiêu ngắn hạn theo tuần và bổ sung điểm kiểm tra, bài tập hoặc kết quả môn học để theo dõi mục tiêu “' + goal + '”.',
-        reason: 'Học sinh đã có mục tiêu “' + goal + '”, nhưng chưa có dữ liệu điểm để đo khoảng cách đến mục tiêu.'
-      });
+      addRecommendation(recommendations, 'goal', 'Xây dựng lộ trình đạt mục tiêu',
+        'Đặt các mục tiêu ngắn hạn theo tuần và bổ sung điểm kiểm tra, bài tập hoặc kết quả môn học để theo dõi mục tiêu “' + goal + '”.',
+        'Học sinh đã có mục tiêu “' + goal + '”, nhưng chưa có dữ liệu điểm để đo khoảng cách đến mục tiêu.');
     }
 
     if (!hasHistory && average === null) {
-      recommendations.push({
-        type: 'data',
-        title: 'Bổ sung dữ liệu học tập',
-        text: 'Cần thêm điểm theo môn, lịch sử kiểm tra hoặc kết quả bài tập để AI xác định ưu tiên và xu hướng chính xác hơn.',
-        reason: 'Hồ sơ hiện chưa có lịch sử điểm hoặc dữ liệu đánh giá học tập.'
-      });
+      addRecommendation(recommendations, 'data', 'Bổ sung dữ liệu học tập',
+        'Cần thêm điểm theo môn, lịch sử kiểm tra hoặc kết quả bài tập để AI xác định ưu tiên và xu hướng chính xác hơn.',
+        'Hồ sơ hiện chưa có lịch sử điểm hoặc dữ liệu đánh giá học tập.');
     }
 
     if (!recommendations.length) {
-      recommendations.push({
-        type: 'general',
-        title: 'Tiếp tục theo dõi',
-        text: 'Cần thêm dữ liệu học tập để đưa ra khuyến nghị cá nhân hóa chính xác hơn.',
-        reason: 'Dữ liệu hiện tại chưa đủ để xác định ưu tiên cụ thể.'
-      });
+      addRecommendation(recommendations, 'general', 'Tiếp tục theo dõi',
+        'Cần thêm dữ liệu học tập để đưa ra khuyến nghị cá nhân hóa chính xác hơn.',
+        'Dữ liệu hiện tại chưa đủ để xác định ưu tiên cụ thể.');
     }
 
     return {
@@ -176,6 +185,7 @@
       attendance: attendance,
       goal: goal || null,
       talent: talent || null,
+      analysis: analysis,
       recommendations: recommendations
     };
   }
@@ -204,12 +214,10 @@
     }).join('');
 
     return '<section class="space-y-3" data-module="student-ai-recommendation">' +
-      '<div class="flex items-center justify-between gap-3">' +
-        '<div><h3 class="text-base font-bold text-slate-800">Gợi ý học tập từ AI</h3>' +
-        '<p class="text-xs text-slate-500">Phân tích giải thích được dựa trên dữ liệu hiện có của ' + escapeHtml(result.studentName) + '.</p></div>' +
-      '</div>' +
+      '<div><h3 class="text-base font-bold text-slate-800">Gợi ý học tập từ AI</h3>' +
+      '<p class="text-xs text-slate-500">Phân tích giải thích được dựa trên dữ liệu hiện có của ' + escapeHtml(result.studentName) + '.</p></div>' +
       '<div class="grid gap-3">' + cards + '</div>' +
-    '</section>';
+      '</section>';
   }
 
   window.StudentAIRecommendation = {
@@ -217,6 +225,7 @@
     analyze: analyse,
     recommend: recommend,
     render: render,
-    getStudent: getStudent
+    getStudent: getStudent,
+    getAnalysis: getAnalysis
   };
 })(window);
