@@ -5,9 +5,23 @@
 (function (window) {
   'use strict';
 
-  function students() {
-    return Array.isArray(window.state && window.state.students) ? window.state.students : [];
+ function students() {
+  if (Array.isArray(window.state && window.state.students)) {
+    return window.state.students;
   }
+
+  try {
+    var raw = window.localStorage.getItem('chuyen_tau_data');
+    var data = raw ? JSON.parse(raw) : null;
+
+    return data && Array.isArray(data.students)
+      ? data.students
+      : [];
+  } catch (error) {
+    console.warn('[StudentDataAnalysis] Cannot read student data:', error);
+    return [];
+  }
+}
 
   function number(value) {
     var n = Number(value);
