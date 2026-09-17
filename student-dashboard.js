@@ -199,7 +199,34 @@
                 </div>
             </section>`;
     }
+function renderAIRecommendation(student) {
+    if (
+        window.StudentAIRecommendation &&
+        typeof window.StudentAIRecommendation.render === 'function'
+    ) {
+        const studentId = student.id ?? student.code ?? student.studentId;
 
+        try {
+            return window.StudentAIRecommendation.render(studentId);
+        } catch (error) {
+            console.warn('[StudentDashboard] AI Recommendation render error:', error);
+        }
+    }
+
+    return `
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center gap-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <i class="ph-sparkle text-xl"></i>
+                </span>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Gợi ý học tập từ AI</h2>
+                    <p class="mt-1 text-sm text-slate-500">Chưa có dữ liệu gợi ý.</p>
+                </div>
+            </div>
+        </section>
+    `;
+}
     function render(studentId) {
         const student = getCurrentStudent(studentId);
         if (!student) return renderEmptyState();
