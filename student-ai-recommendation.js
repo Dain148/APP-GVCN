@@ -80,13 +80,33 @@ function getStudents() {
     return student ? (student.name || student.fullName || student.displayName || 'học sinh') : 'học sinh';
   }
 
-  function getAnalysis(student) {
-    if (window.StudentDataAnalysis && typeof window.StudentDataAnalysis.analyse === 'function') {
-      return window.StudentDataAnalysis.analyse(student);
-    }
-    return null;
+ function getAnalysis(studentOrId) {
+  if (!window.StudentDataAnalysis) return null;
+
+  var student = studentOrId;
+
+  // Nếu truyền ID thì lấy hồ sơ học sinh tương ứng
+  if (
+    studentOrId === undefined ||
+    studentOrId === null ||
+    typeof studentOrId !== 'object'
+  ) {
+    student = getStudent(studentOrId);
   }
 
+  if (
+    typeof window.StudentDataAnalysis.analyseById === 'function' &&
+    (typeof studentOrId === 'number' || typeof studentOrId === 'string')
+  ) {
+    return window.StudentDataAnalysis.analyseById(studentOrId);
+  }
+
+  if (typeof window.StudentDataAnalysis.analyse === 'function') {
+    return window.StudentDataAnalysis.analyse(student);
+  }
+
+  return null;
+}
   function addRecommendation(list, type, title, text, reason) {
     list.push({
       type: type,
