@@ -17,8 +17,25 @@
     const MODULE_ID = 'student-dashboard-module';
 
     function getStudents() {
-        return Array.isArray(window.state?.students) ? window.state.students : [];
+    // Ưu tiên dữ liệu runtime của APP-GVCN
+    if (Array.isArray(window.state?.students) && window.state.students.length) {
+        return window.state.students;
     }
+
+    // Fallback về dữ liệu APP-GVCN trong localStorage
+    try {
+        const raw = window.localStorage.getItem('chuyen_tau_data');
+        const data = raw ? JSON.parse(raw) : null;
+
+        if (data && Array.isArray(data.students)) {
+            return data.students;
+        }
+    } catch (error) {
+        console.warn('[StudentDashboard] Cannot read localStorage:', error);
+    }
+
+    return [];
+}
 
     function getStudent(studentId) {
         if (!studentId) return null;
