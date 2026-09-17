@@ -36,20 +36,6 @@
 
     return [];
 }
-    // Fallback về dữ liệu APP-GVCN trong localStorage
-    try {
-        const raw = window.localStorage.getItem('chuyen_tau_data');
-        const data = raw ? JSON.parse(raw) : null;
-
-        if (data && Array.isArray(data.students)) {
-            return data.students;
-        }
-    } catch (error) {
-        console.warn('[StudentDashboard] Cannot read localStorage:', error);
-    }
-
-    return [];
-}
 
     function getStudent(studentId) {
         if (!studentId) return null;
