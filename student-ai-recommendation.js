@@ -4,11 +4,25 @@
 (function (window) {
   'use strict';
 
-  function getStudents() {
-    return Array.isArray(window.state && window.state.students)
-      ? window.state.students
-      : [];
+function getStudents() {
+  // Ưu tiên nguồn dữ liệu runtime nếu có
+  if (Array.isArray(window.state && window.state.students)) {
+    return window.state.students;
   }
+
+  // Fallback về dữ liệu APP-GVCN đang lưu trong localStorage
+  try {
+    var raw = window.localStorage.getItem('chuyen_tau_data');
+    var data = raw ? JSON.parse(raw) : null;
+
+    return data && Array.isArray(data.students)
+      ? data.students
+      : [];
+  } catch (error) {
+    console.warn('[StudentAIRecommendation] Cannot read student data:', error);
+    return [];
+  }
+}
 
   function getStudent(studentId) {
     if (studentId === undefined || studentId === null || studentId === '') return null;
