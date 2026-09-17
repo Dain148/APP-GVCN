@@ -77,19 +77,38 @@
       selector.appendChild(option);
     });
 
-    function renderSelected() {
-      const selected = students.find((student, index) => String(student.id ?? student.code ?? student.studentId ?? index) === selector.value) || students[0];
-      const key = selected.id ?? selected.code ?? selected.studentId ?? students.indexOf(selected);
+   function renderSelected() {
+  const selected =
+    students.find(
+      (student, index) =>
+        String(student.id ?? student.code ?? student.studentId ?? index) === selector.value
+    ) || students[0];
 
-      try {
-        const html = window.StudentDashboard.render(key);
-        content.innerHTML = html || '<div>Không có dữ liệu hiển thị.</div>';
-      } catch (error) {
-        console.error('[StudentDashboardIntegration] Render error:', error);
-        content.innerHTML = '<div style="padding:30px;text-align:center;color:#b91c1c">Không thể hiển thị hồ sơ học tập. Vui lòng mở Console để kiểm tra lỗi.</div>';
+  const key = selected.id ?? selected.code ?? selected.studentId ?? students.indexOf(selected);
+
+  try {
+    // 1. Render dashboard học sinh hiện tại
+    let html = window.StudentDashboard.render(key);
+
+    // 2. Nối thêm module AI Recommendation nếu module đã tải
+    if (
+      window.StudentAIRecommendation &&
+      typeof window.StudentAIRecommendation.render === 'function'
+    ) {
+      const recommendationHtml = window.StudentAIRecommendation.render(key);
+
+      if (recommendationHtml) {
+        html = (html || '') + recommendationHtml;
       }
     }
 
+    content.innerHTML = html || '<div>Không có dữ liệu hiển thị.</div>';
+  } catch (error) {
+    console.error('[StudentDashboardIntegration] Render error:', error);
+    content.innerHTML =
+      '<div style="padding:30px;text-align:center;color:#b91c1c">Không thể hiển thị hồ sơ học tập. Vui lòng mở Console để kiểm tra lỗi.</div>';
+  }
+}
     selector.onchange = renderSelected;
     renderSelected();
   }
